@@ -20,6 +20,11 @@ RSpec.describe Email::AgentAddressBuilder do
     expect(described_class.new(message: message_with({ send_as_agent: false }), channel: channel).build).to be_nil
   end
 
+  it 'returns nil for an OAuth inbox, which can only send as its own account' do
+    channel.update!(provider: 'google', imap_enabled: true, provider_config: { access_token: 'token', refresh_token: 'refresh' })
+    expect(described_class.new(message: message_with({ send_as_agent: true }), channel: channel).build).to be_nil
+  end
+
   it 'returns nil for a message not written by an agent' do
     bot = create(:agent_bot, account: account)
     expect(described_class.new(message: message_with({ send_as_agent: true }, sender: bot), channel: channel).build).to be_nil

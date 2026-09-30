@@ -6,11 +6,10 @@ class Email::FromBuilder < Email::BaseBuilder
 
     from_email = case email_channel_type
                  when :standard_imap_smtp,
+                      :google_oauth,
+                      :microsoft_oauth,
                       :forwarding_own_smtp
                    Email::AgentAddressBuilder.new(message: message, channel: channel).build || channel.email
-                 when :google_oauth,
-                      :microsoft_oauth
-                   channel.email
                  when :imap_chatwoot_smtp,
                       :forwarding_chatwoot_smtp
                    channel.verified_for_sending ? channel.email : account_support_email
