@@ -603,6 +603,18 @@ RSpec.describe ConversationReplyMailer do
         expect(mail['from'].value).to eq "#{message.sender.available_name} from #{smtp_channel.inbox.sanitized_name} <#{smtp_channel.email}>"
       end
 
+      it "sends from the agent's mailbox on the inbox domain when the message is sent as the agent, keeping Reply-To" do
+        message.update!(content_attributes: message.content_attributes.merge('send_as_agent' => true))
+        mailbox = message.sender.email.split('@').first
+        domain = smtp_channel.email.split('@').last
+
+        mail = described_class.email_reply(message)
+        default_mail = described_class.email_reply(create(:message, conversation: conversation, account: account, message_type: 'outgoing'))
+
+        expect(mail['from'].value).to eq "#{message.sender.available_name} from #{smtp_channel.inbox.sanitized_name} <#{mailbox}@#{domain}>"
+        expect(mail.reply_to).to eq default_mail.reply_to
+      end
+
       it 'renders sender name even when assignee is not present' do
         conversation.update(assignee_id: nil)
         mail = described_class.email_reply(message)

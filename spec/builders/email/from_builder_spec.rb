@@ -95,6 +95,12 @@ RSpec.describe Email::FromBuilder do
 
           expect(result).to include('care@example.com')
         end
+
+        it 'keeps the channel email for a message sent as the agent' do
+          current_message.update!(content_attributes: { send_as_agent: true })
+
+          expect(described_class.new(inbox: inbox, message: current_message).build).to include('care@example.com')
+        end
       end
 
       context 'with Microsoft OAuth configuration' do
@@ -128,6 +134,14 @@ RSpec.describe Email::FromBuilder do
           result = builder.build
 
           expect(result).to include('care@example.com')
+        end
+
+        it "returns the agent's mailbox on the channel domain when the message is sent as the agent" do
+          current_message.update!(content_attributes: { send_as_agent: true })
+          result = described_class.new(inbox: inbox, message: current_message).build
+
+          expect(result).to include("#{agent.email.split('@').first}@example.com")
+          expect(result).not_to include('care@example.com')
         end
       end
 
