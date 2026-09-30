@@ -144,14 +144,7 @@ class ConversationReplyMailer < ApplicationMailer
   end
 
   def channel_email_with_name
-    sender_name(agent_email_address || @channel.email)
-  end
-
-  # The agent's own address, when the message is sent as its agent through the inbox's own SMTP.
-  def agent_email_address
-    return if email_oauth_enabled?
-
-    Email::AgentAddressBuilder.new(message: current_message, channel: @channel).build
+    sender_name(Email::AgentAddressBuilder.new(message: current_message, channel: @channel).build || @channel.email)
   end
 
   def inbox_from_email_address
