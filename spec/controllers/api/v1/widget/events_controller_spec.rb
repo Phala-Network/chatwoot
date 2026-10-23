@@ -34,6 +34,26 @@ RSpec.describe '/api/v1/widget/events', type: :request do
           .with(params[:name], anything, contact_inbox: contact_inbox,
                                          event_info: { test_id: 'test', browser_language: nil, widget_language: nil, browser: anything })
       end
+
+      context 'when identified contacts are required' do
+        let(:web_widget) { create(:channel_widget, account: account, identified_contacts_only: true) }
+        let(:campaign) { create(:campaign, account: account, inbox: web_widget.inbox) }
+
+        it 'rejects campaign triggers from an unverified contact' do
+          expect(Rails.configuration.dispatcher).not_to receive(:dispatch)
+
+          post '/api/v1/widget/events',
+               params: {
+                 website_token: web_widget.website_token,
+                 name: 'campaign.triggered',
+                 event_info: { campaign_id: campaign.display_id }
+               },
+               headers: { 'X-Auth-Token' => token },
+               as: :json
+
+          expect(response).to have_http_status(:forbidden)
+        end
+      end
     end
   end
 end

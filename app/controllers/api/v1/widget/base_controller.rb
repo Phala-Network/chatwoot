@@ -4,6 +4,7 @@ class Api::V1::Widget::BaseController < ApplicationController
 
   before_action :set_web_widget
   before_action :set_contact
+  include WidgetIdentifiedContactsOnly
 
   private
 
