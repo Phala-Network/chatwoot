@@ -688,6 +688,19 @@ RSpec.describe 'Inboxes API', type: :request do
         expect(api_channel.reload.webhook_url).to eq('webhook.test')
       end
 
+      it 'updates identified contacts only on a web widget inbox' do
+        web_widget = create(:channel_widget, account: account)
+
+        patch "/api/v1/accounts/#{account.id}/inboxes/#{web_widget.inbox.id}",
+              headers: admin.create_new_auth_token,
+              params: { channel: { identified_contacts_only: true } },
+              as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(web_widget.reload.identified_contacts_only).to be(true)
+        expect(response.parsed_body['identified_contacts_only']).to be(true)
+      end
+
       it 'updates whatsapp inbox when administrator' do
         stub_request(:post, 'https://waba.360dialog.io/v1/configs/webhook').to_return(status: 200, body: '', headers: {})
         stub_request(:get, 'https://waba.360dialog.io/v1/configs/templates').to_return(status: 200, body: '', headers: {})

@@ -220,6 +220,33 @@ RSpec.describe '/api/v1/widget/messages', type: :request do
         expect(conversation.reload.resolved?).to be(true)
       end
 
+      context 'when identified contacts are required' do
+        let(:web_widget) { create(:channel_widget, account: account, identified_contacts_only: true) }
+
+        it 'rejects an unverified contact without creating a message' do
+          expect do
+            post api_v1_widget_messages_url,
+                 params: { website_token: web_widget.website_token, message: { content: 'hello world' } },
+                 headers: { 'X-Auth-Token' => token },
+                 as: :json
+          end.not_to change(Message, :count)
+
+          expect(response).to have_http_status(:forbidden)
+          expect(response.parsed_body['error']).to eq('Contact must be identified')
+        end
+
+        it 'allows a verified contact' do
+          contact_inbox.update!(hmac_verified: true)
+
+          post api_v1_widget_messages_url,
+               params: { website_token: web_widget.website_token, message: { content: 'hello world' } },
+               headers: { 'X-Auth-Token' => token },
+               as: :json
+
+          expect(response).to have_http_status(:success)
+        end
+      end
+
       it 'does not create resolved activity messages when snoozed conversation is opened' do
         conversation.snoozed!
 
