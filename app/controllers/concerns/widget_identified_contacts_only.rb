@@ -33,7 +33,6 @@ module WidgetIdentifiedContactsOnly
 
   def action_requires_identification?
     return false if controller_path == 'api/v1/widget/events' && params[:name] != 'campaign.triggered'
-    return false if controller_path == 'api/v1/widget/contacts' && params[:identifier].present?
 
     true
   end
