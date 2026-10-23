@@ -9,7 +9,7 @@ class Email::FromBuilder < Email::BaseBuilder
                       :google_oauth,
                       :microsoft_oauth,
                       :forwarding_own_smtp
-                   channel.email
+                   Email::AgentAddressBuilder.new(message: message, channel: channel).build || channel.email
                  when :imap_chatwoot_smtp,
                       :forwarding_chatwoot_smtp
                    channel.verified_for_sending ? channel.email : account_support_email
