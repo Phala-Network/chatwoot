@@ -356,5 +356,27 @@ RSpec.describe '/api/v1/widget/messages', type: :request do
         expect { contact.reload }.to raise_error(ActiveRecord::RecordNotFound)
       end
     end
+
+    context 'when identified contacts are required' do
+      let(:web_widget) { create(:channel_widget, account: account, identified_contacts_only: true) }
+      let!(:message) do
+        create(:message, content_type: 'input_csat',
+                         content_attributes: { submitted_values: { csat_survey_response: { rating: 1, feedback_message: 'Original' } } },
+                         account: account, inbox: web_widget.inbox, conversation: conversation)
+      end
+
+      it 'rejects an unverified CSAT submission without changing the message' do
+        original_attributes = message.reload.content_attributes.deep_dup
+
+        put api_v1_widget_message_url(message.id),
+            params: { website_token: web_widget.website_token,
+                      message: { submitted_values: { csat_survey_response: { rating: 5, feedback_message: 'Attacker' } } } },
+            headers: { 'X-Auth-Token' => token },
+            as: :json
+
+        expect(response).to have_http_status(:forbidden)
+        expect(message.reload.content_attributes).to eq(original_attributes)
+      end
+    end
   end
 end
