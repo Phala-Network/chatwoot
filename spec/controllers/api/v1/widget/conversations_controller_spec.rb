@@ -207,6 +207,33 @@ RSpec.describe '/api/v1/widget/conversations/toggle_typing', type: :request do
       json_response = response.parsed_body
       expect(json_response['contact']['phone_number']).to be_nil
     end
+
+    context 'when identified contacts are required' do
+      let(:web_widget) { create(:channel_widget, account: account, identified_contacts_only: true) }
+
+      it 'rejects an unverified contact without creating a conversation or message' do
+        expect do
+          post '/api/v1/widget/conversations',
+               headers: { 'X-Auth-Token' => token },
+               params: conversation_params,
+               as: :json
+        end.to not_change(Conversation, :count).and not_change(Message, :count)
+
+        expect(response).to have_http_status(:forbidden)
+        expect(response.parsed_body['error']).to eq('Contact must be identified')
+      end
+
+      it 'allows a verified contact' do
+        contact_inbox.update!(hmac_verified: true)
+
+        post '/api/v1/widget/conversations',
+             headers: { 'X-Auth-Token' => token },
+             params: conversation_params,
+             as: :json
+
+        expect(response).to have_http_status(:success)
+      end
+    end
   end
 
   describe 'POST /api/v1/widget/conversations/toggle_typing' do
