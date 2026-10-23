@@ -71,6 +71,37 @@ RSpec.describe '/api/v1/widget/integrations/dyte', type: :request do
           )
         end
       end
+
+      context 'when identified contacts are required' do
+        let(:web_widget) { create(:channel_widget, account: account, identified_contacts_only: true) }
+
+        it 'rejects an unverified contact' do
+          post add_participant_to_meeting_api_v1_widget_integrations_dyte_url,
+               headers: { 'X-Auth-Token' => token },
+               params: { website_token: web_widget.website_token, message_id: integration_message.id },
+               as: :json
+
+          expect(response).to have_http_status(:forbidden)
+          expect(response.parsed_body['error']).to eq('Contact must be identified')
+        end
+
+        it 'allows a verified contact' do
+          contact_inbox.update!(hmac_verified: true)
+          stub_request(:post, 'https://api.cloudflare.com/client/v4/accounts/account_id/realtime/kit/app_id/meetings/m_id/participants')
+            .to_return(
+              status: 200,
+              body: { success: true, data: { id: 'random_uuid', token: 'json-web-token' } }.to_json,
+              headers: { 'Content-Type' => 'application/json' }
+            )
+
+          post add_participant_to_meeting_api_v1_widget_integrations_dyte_url,
+               headers: { 'X-Auth-Token' => token },
+               params: { website_token: web_widget.website_token, message_id: integration_message.id },
+               as: :json
+
+          expect(response).to have_http_status(:success)
+        end
+      end
     end
   end
 end
