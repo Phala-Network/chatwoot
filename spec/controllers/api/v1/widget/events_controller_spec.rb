@@ -37,7 +37,8 @@ RSpec.describe '/api/v1/widget/events', type: :request do
 
       context 'when identified contacts are required' do
         let(:web_widget) { create(:channel_widget, account: account, identified_contacts_only: true) }
-        let(:campaign) { create(:campaign, account: account, inbox: web_widget.inbox) }
+        let!(:token) { Widget::TokenService.new(payload: payload).generate_token }
+        let!(:campaign) { create(:campaign, account: account, inbox: web_widget.inbox) }
 
         it 'rejects campaign triggers from an unverified contact' do
           expect(Rails.configuration.dispatcher).not_to receive(:dispatch)

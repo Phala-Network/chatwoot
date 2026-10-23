@@ -117,6 +117,7 @@ RSpec.describe '/api/v1/widget/contacts', type: :request do
 
     context 'when identified contacts are required' do
       let(:web_widget) { create(:channel_widget, account: account, identified_contacts_only: true) }
+      let!(:contact_inbox) { create(:contact_inbox, contact: contact, inbox: web_widget.inbox) }
 
       it 'rejects an unverified anonymous update without changing the contact' do
         expect do
