@@ -1,0 +1,56 @@
+# Publishes Phala's Chatwoot EE image (a release plus Phala's patches, on a phala/* branch) to
+# ghcr.io/phala-network/chatwoot, built the way publish_ee_docker.yml builds the official image.
+# Tags: the branch (phala/v4.18.0 -> v4.18.0) and the branch with the commit; deploy by digest.
+
+name: Publish Phala Chatwoot docker image
+
+on:
+  push:
+    branches:
+      - phala/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set Chatwoot edition
+        run: |
+          echo -en '\nENV CW_EDITION="ee"' >> docker/Dockerfile
+
+      - name: Set Docker Tags
+        run: |
+          TAG="${GITHUB_REF_NAME#phala/}"
+          TAG="${TAG//\//-}"
+          REPO="ghcr.io/${GITHUB_REPOSITORY,,}"
+          echo "DOCKER_TAGS=${REPO}:${TAG},${REPO}:${TAG}-${GITHUB_SHA::12}" >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: docker/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ env.DOCKER_TAGS }}
+
+      - name: Show digest
+        run: echo "Pushed ${DOCKER_TAGS} at ${{ steps.build.outputs.digest }}" >> "$GITHUB_STEP_SUMMARY"

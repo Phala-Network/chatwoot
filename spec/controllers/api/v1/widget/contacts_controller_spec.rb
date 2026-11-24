@@ -114,6 +114,65 @@ RSpec.describe '/api/v1/widget/contacts', type: :request do
         expect(response).to have_http_status(:success)
       end
     end
+
+    context 'when identified contacts are required' do
+      let(:web_widget) { create(:channel_widget, account: account, identified_contacts_only: true, hmac_mandatory: false) }
+      let!(:contact_inbox) { create(:contact_inbox, contact: contact, inbox: web_widget.inbox) }
+
+      it 'rejects an unverified anonymous update without changing the contact' do
+        expect do
+          patch '/api/v1/widget/contact',
+                params: { website_token: web_widget.website_token, email: 'blocked@test.com', name: 'Blocked' },
+                headers: { 'X-Auth-Token' => token },
+                as: :json
+        end.not_to change(Contact, :count)
+
+        expect(response).to have_http_status(:forbidden)
+        expect(response.parsed_body['error']).to eq('Contact must be identified')
+        expect(contact.reload.email).to eq('test@test.com')
+      end
+
+      it 'rejects an unverified identified update without an identifier hash' do
+        contact.update!(identifier: 'existing-user', name: 'Original')
+
+        expect do
+          patch '/api/v1/widget/contact',
+                params: { website_token: web_widget.website_token, identifier: 'existing-user', name: 'Attacker' },
+                headers: { 'X-Auth-Token' => token },
+                as: :json
+        end.not_to change(Contact, :count)
+
+        expect(response).to have_http_status(:forbidden)
+        expect(contact.reload.name).to eq('Original')
+      end
+
+      it 'rejects an unverified identified update with an invalid identifier hash' do
+        contact.update!(identifier: 'existing-user', name: 'Original')
+
+        expect do
+          patch '/api/v1/widget/contact',
+                params: { website_token: web_widget.website_token, identifier: 'existing-user',
+                          identifier_hash: 'invalid', name: 'Attacker' },
+                headers: { 'X-Auth-Token' => token },
+                as: :json
+        end.not_to change(Contact, :count)
+
+        expect(response).to have_http_status(:forbidden)
+        expect(contact.reload.name).to eq('Original')
+      end
+
+      it 'allows an identified anonymous update' do
+        contact_inbox.update!(hmac_verified: true)
+
+        patch '/api/v1/widget/contact',
+              params: { website_token: web_widget.website_token, email: 'updated@test.com' },
+              headers: { 'X-Auth-Token' => token },
+              as: :json
+
+        expect(response).to have_http_status(:success)
+        expect(contact.reload.email).to eq('updated@test.com')
+      end
+    end
   end
 
   describe 'PATCH /api/v1/widget/contact with HMAC enforcement' do
@@ -190,7 +249,7 @@ RSpec.describe '/api/v1/widget/contacts', type: :request do
 
   describe 'PATCH /api/v1/widget/contact/set_user' do
     let(:params) { { website_token: web_widget.website_token, identifier: 'test' } }
-    let(:web_widget) { create(:channel_widget, account: account, hmac_mandatory: true) }
+    let(:web_widget) { create(:channel_widget, account: account, hmac_mandatory: true, identified_contacts_only: true) }
     let(:correct_identifier_hash) { OpenSSL::HMAC.hexdigest('sha256', web_widget.hmac_token, params[:identifier].to_s) }
     let(:incorrect_identifier_hash) { 'test' }
 

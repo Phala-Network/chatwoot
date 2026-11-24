@@ -140,7 +140,7 @@ class ConversationReplyMailer < ApplicationMailer
   end
 
   def channel_email_with_name
-    sender_name(@channel.email)
+    sender_name(Email::AgentAddressBuilder.new(message: current_message, channel: @channel).build || @channel.email)
   end
 
   def inbox_from_email_address
